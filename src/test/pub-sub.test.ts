@@ -59,13 +59,17 @@ describe('PubSub', function() {
       const event = {};
       const event2 = {};
       (await pubSub.subscribe('id', event)).should.equal(false);
-      pubSub.on(PubSub.PROCESSED, (id, event, result) => {
-        event.should.equal(event2);
-        result.should.eql('result');
-        id.should.eql('id');
+      const promise = new Promise(r => {
+        pubSub.on(PubSub.PROCESSED, (id, event, result) => {
+          event.should.equal(event2);
+          result.should.eql('result');
+          id.should.eql('id');
+          r();
+        });
       });
       (await pubSub.subscribe('id', event2)).should.equal(true);
       await pubSub.unsubscribe('id', 'result');
+      await promise;
     });
   });
 });

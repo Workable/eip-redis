@@ -28,6 +28,7 @@ export default class PubSub extends PubSubInterface {
       const id = channel.toString().replace(`${this.ns}:`, '');
       if (this.events.has(id)) {
         this.events.get(id).emit(PubSub.PROCESSED, JSON.parse(message.toString()));
+        this.events.delete(id);
       }
     });
   }
@@ -61,8 +62,7 @@ export default class PubSub extends PubSubInterface {
   }
 
   async unsubscribe(id: string, result) {
-    const published = await this.publish(`${this.ns}:${id}`, JSON.stringify(result));
-    this.events.delete(id);
+    await this.publish(`${this.ns}:${id}`, JSON.stringify(result));
     await this.unsub(`${this.ns}:${id}`);
   }
 }
