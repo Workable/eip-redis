@@ -15,16 +15,16 @@ export default class PubSub extends PubSubInterface {
     eventsPerPeriod,
     periodInMS,
     public redisPub: Redis.RedisClient,
-    public rediSub: Redis.RedisClient,
+    public redisSub: Redis.RedisClient,
     public ns: string
   ) {
     super(eventsPerPeriod, periodInMS);
     this.pubsub = promisify(this.redisPub.pubsub.bind(this.redisPub));
     this.publish = promisify(this.redisPub.publish.bind(this.redisPub));
-    this.unsub = promisify(this.rediSub.unsubscribe.bind(this.rediSub));
+    this.unsub = promisify(this.redisSub.unsubscribe.bind(this.redisSub));
     this.incr = promisify(this.redisPub.incr.bind(this.redisPub));
     this.decr = promisify(this.redisPub.decr.bind(this.redisPub));
-    this.rediSub.on('message', (channel, message) => {
+    this.redisSub.on('message', (channel, message) => {
       const id = channel.toString().replace(`${this.ns}:`, '');
       if (this.events.has(id)) {
         this.events.get(id).emit(PubSub.PROCESSED, JSON.parse(message.toString()));
@@ -47,7 +47,7 @@ export default class PubSub extends PubSubInterface {
 
     const counter = await this.incr(`${this.ns}-counter`);
     if (counter <= this.eventsPerPeriod) {
-      this.rediSub.subscribe(`${this.ns}:${id}`);
+      this.redisSub.subscribe(`${this.ns}:${id}`);
       return false;
     } else {
       await this.decr(`${this.ns}-counter`);
@@ -56,11 +56,12 @@ export default class PubSub extends PubSubInterface {
     }
   }
 
+  async timeout() {
+    await this.decr(`${this.ns}-counter`);
+  }
+
   async unsubscribe(id: string, result) {
     const published = await this.publish(`${this.ns}:${id}`, JSON.stringify(result));
-    if (published > 0) {
-      await this.decr(`${this.ns}-counter`);
-    }
     this.events.delete(id);
     await this.unsub(`${this.ns}:${id}`);
   }

@@ -30,10 +30,10 @@ export default class Queue extends QueueInterface {
 
   async dequeue() {
     for (let priority = 10; priority >= 0; priority--) {
-      const id = await this.spop(`${this.ns}:priority:${priority}`);
+      const id = await this.spop([`${this.ns}:priority:${priority}`]);
       if (id) {
         const count = await this.scard(`${this.ns}:events:${id}`);
-        const events = await this.spop(`${this.ns}:events:${id}`, count + 10);
+        const events = await this.spop([`${this.ns}:events:${id}`, count + 10]);
         await this.del(`${this.ns}:events:${id}`);
         if (events && events.length > 0) {
           return events.map(e => JSON.parse(e));
