@@ -13,12 +13,11 @@ export default class PubSub extends PubSubInterface {
 
   constructor(
     eventsPerPeriod,
-    periodInMS,
     public redisPub: Redis.RedisClient,
     public redisSub: Redis.RedisClient,
     public ns: string
   ) {
-    super(eventsPerPeriod, periodInMS);
+    super(eventsPerPeriod);
     this.pubsub = promisify(this.redisPub.pubsub.bind(this.redisPub));
     this.publish = promisify(this.redisPub.publish.bind(this.redisPub));
     this.unsub = promisify(this.redisSub.unsubscribe.bind(this.redisSub));

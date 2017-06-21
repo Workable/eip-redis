@@ -13,7 +13,7 @@ describe('PubSub', function() {
   let pubSub: PubSubInterface;
 
   beforeEach(function() {
-    pubSub = new PubSub(2, 2000, redisPub, redisSub, 'test');
+    pubSub = new PubSub(2, redisPub, redisSub, 'test');
   });
 
   afterEach(function() {
