@@ -21,6 +21,7 @@ npm install --save eip-redis
 const eip = require('eip');
 const redis = require('redis');
 const { PubSub, Queue } = require('eip-redis');
+const { Timer } = require('eip-timer');
 
 const redisPub = redis.createClient();
 const redisSub =  redis.createClient({return_buffers:true});
@@ -29,7 +30,7 @@ const pubSub = new PubSub(1, 1000, redisPub, redisSub, 'namespace') // eventsPer
 const queue = new Queue(redisPub, 'namespace');
 const resource = x => x;
 
-const throttler = new eip.Route().throttleResource({ pubSub, queue, resource });
+const throttler = new eip.Route().throttleResource({ pubSub, queue, resource, timer });
 ```
 
 ## License
