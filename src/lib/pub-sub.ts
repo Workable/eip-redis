@@ -9,6 +9,8 @@ export default class PubSub extends PubSubInterface {
   private unsub: Function;
   private incr: Function;
   private decr: Function;
+  private get: Function;
+  private del: Function;
   private events: Map<String, any> = new Map();
 
   constructor(
@@ -23,9 +25,12 @@ export default class PubSub extends PubSubInterface {
     this.unsub = promisify(this.redisSub.unsubscribe.bind(this.redisSub));
     this.incr = promisify(this.redisPub.incr.bind(this.redisPub));
     this.decr = promisify(this.redisPub.decr.bind(this.redisPub));
+    this.get = promisify(this.redisPub.get.bind(this.redisPub));
+    this.del = promisify(this.redisPub.del.bind(this.redisPub));
     this.redisSub.on('message', (channel, message) => {
-      const id = channel.toString().replace(`${this.ns}:`, '');
-      this.unsub(`${this.ns}:${id}`);
+      const id = channel.toString().replace(`${this.ns}:subscribe:`, '');
+      this.unsub(`${this.ns}:subscribe:${id}`);
+      this.del(`${this.ns}:running:${id}`);
       if (this.events.has(id)) {
         this.events.get(id).emit(PubSub.PROCESSED, JSON.parse(message.toString()));
         this.events.delete(id);
@@ -33,28 +38,30 @@ export default class PubSub extends PubSubInterface {
     });
   }
 
-  private addEventListener(id, event) {
-    this.redisSub.subscribe(`${this.ns}:${id}`);
+  private addEventListener(id, event, subscribe) {
+    this.redisSub.subscribe(`${this.ns}:subscribe:${id}`);
 
+    if (!subscribe) {
+      return;
+    }
     if (!this.events.has(id)) {
       this.events.set(id, new EventEmmiter.EventEmitter());
     }
-
     this.events.get(id).on(PubSub.PROCESSED, result => {
       this.inject(id, event, result);
     });
   }
 
-  async subscribe(id: string, event) {
-    const [, eventSubscription] = await this.pubsub(['NUMSUB', `${this.ns}:${id}`]);
-    if (eventSubscription) {
-      this.addEventListener(id, event);
+  async subscribe(id: string, event, subscribe = true) {
+    const running = await this.get(`${this.ns}:running:${id}`);
+    this.addEventListener(id, event, subscribe);
+    if (running) {
       return true;
     }
 
     const counter = await this.incr(`${this.ns}-counter`);
     if (counter <= this.eventsPerPeriod) {
-      this.addEventListener(id, event);
+      await this.incr(`${this.ns}:running:${id}`);
       return false;
     } else {
       await this.decr(`${this.ns}-counter`);
@@ -68,6 +75,6 @@ export default class PubSub extends PubSubInterface {
   }
 
   async publish(id: string, result) {
-    await this.pub(`${this.ns}:${id}`, JSON.stringify(result));
+    await this.pub(`${this.ns}:subscribe:${id}`, JSON.stringify(result));
   }
 }

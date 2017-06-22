@@ -18,10 +18,14 @@ describe('PubSub', function() {
 
   afterEach(function() {
     sandbox.restore();
-    redisSub.unsubscribe('test:id');
-    redisSub.unsubscribe('test:id2');
-    redisSub.unsubscribe('test:id3');
+    redisSub.unsubscribe('test:subsribe:id');
+    redisSub.unsubscribe('test:subsribe:id2');
+    redisSub.unsubscribe('test:subsribe:id3');
     redisPub.del('test-counter');
+    redisPub.del('test:running:id');
+    redisPub.del('test:running:id2');
+    redisPub.del('test:running:id3');
+
   });
 
   describe('subscribe', function() {
