@@ -5,7 +5,7 @@ import * as EventEmmiter from 'events';
 
 export default class PubSub extends PubSubInterface {
   private pubsub: Function;
-  private publish: Function;
+  private pub: Function;
   private unsub: Function;
   private incr: Function;
   private decr: Function;
@@ -19,12 +19,13 @@ export default class PubSub extends PubSubInterface {
   ) {
     super(eventsPerPeriod);
     this.pubsub = promisify(this.redisPub.pubsub.bind(this.redisPub));
-    this.publish = promisify(this.redisPub.publish.bind(this.redisPub));
+    this.pub = promisify(this.redisPub.publish.bind(this.redisPub));
     this.unsub = promisify(this.redisSub.unsubscribe.bind(this.redisSub));
     this.incr = promisify(this.redisPub.incr.bind(this.redisPub));
     this.decr = promisify(this.redisPub.decr.bind(this.redisPub));
     this.redisSub.on('message', (channel, message) => {
       const id = channel.toString().replace(`${this.ns}:`, '');
+      this.unsub(`${this.ns}:${id}`);
       if (this.events.has(id)) {
         this.events.get(id).emit(PubSub.PROCESSED, JSON.parse(message.toString()));
         this.events.delete(id);
@@ -61,8 +62,7 @@ export default class PubSub extends PubSubInterface {
     await this.decr(`${this.ns}-counter`);
   }
 
-  async unsubscribe(id: string, result) {
-    await this.publish(`${this.ns}:${id}`, JSON.stringify(result));
-    await this.unsub(`${this.ns}:${id}`);
+  async publish(id: string, result) {
+    await this.pub(`${this.ns}:${id}`, JSON.stringify(result));
   }
 }
