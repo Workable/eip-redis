@@ -35,6 +35,7 @@ export default class PubSub extends PubSubInterface {
   async subscribe(id: string, event) {
     const [, eventSubscription] = await this.pubsub(['NUMSUB', `${this.ns}:${id}`]);
     if (eventSubscription) {
+      this.redisSub.subscribe(`${this.ns}:${id}`);
       if (!this.events.has(id)) {
         this.events.set(id, new EventEmmiter.EventEmitter());
       }

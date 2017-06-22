@@ -49,10 +49,10 @@ describe('Queue', function() {
       await queue.enqueue('id4', 11, 'event9');
 
       (await queue.dequeue()).should.eql(['event9']);
-      (await queue.dequeue()).should.eql(['event1', 'event5']);
-      (await queue.dequeue()).should.eql(['event3', 'event7']);
-      (await queue.dequeue()).should.eql(['event6', 'event2']);
-      (await queue.dequeue()).should.eql(['event8', 'event4']);
+      (await queue.dequeue()).sort().should.eql(['event1', 'event5']);
+      (await queue.dequeue()).sort().should.eql(['event3', 'event7']);
+      (await queue.dequeue()).sort().should.eql(['event2', 'event6']);
+      (await queue.dequeue()).sort().should.eql(['event4', 'event8']);
       (await queue.dequeue()).should.eql([]);
     });
   });
