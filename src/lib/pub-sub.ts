@@ -33,23 +33,28 @@ export default class PubSub extends PubSubInterface {
     });
   }
 
+  private addEventListener(id, event) {
+    this.redisSub.subscribe(`${this.ns}:${id}`);
+
+    if (!this.events.has(id)) {
+      this.events.set(id, new EventEmmiter.EventEmitter());
+    }
+
+    this.events.get(id).on(PubSub.PROCESSED, result => {
+      this.inject(id, event, result);
+    });
+  }
+
   async subscribe(id: string, event) {
     const [, eventSubscription] = await this.pubsub(['NUMSUB', `${this.ns}:${id}`]);
     if (eventSubscription) {
-      this.redisSub.subscribe(`${this.ns}:${id}`);
-      if (!this.events.has(id)) {
-        this.events.set(id, new EventEmmiter.EventEmitter());
-      }
-
-      this.events.get(id).on(PubSub.PROCESSED, result => {
-        this.inject(id, event, result);
-      });
+      this.addEventListener(id, event);
       return true;
     }
 
     const counter = await this.incr(`${this.ns}-counter`);
     if (counter <= this.eventsPerPeriod) {
-      this.redisSub.subscribe(`${this.ns}:${id}`);
+      this.addEventListener(id, event);
       return false;
     } else {
       await this.decr(`${this.ns}-counter`);

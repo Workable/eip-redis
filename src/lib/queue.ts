@@ -8,7 +8,7 @@ export default class Queue extends QueueInterface {
   private scard: Function;
   private del: Function;
 
-  constructor(public redis: Redis.RedisClient, public ns: string) {
+  constructor(public redis: Redis.RedisClient, public ns: string, private maxConcurrentRequests = 10) {
     super();
     this.sadd = promisify(this.redis.sadd.bind(this.redis));
     this.spop = promisify(this.redis.spop.bind(this.redis));
@@ -33,7 +33,7 @@ export default class Queue extends QueueInterface {
       const id = await this.spop([`${this.ns}:priority:${priority}`]);
       if (id) {
         const count = await this.scard(`${this.ns}:events:${id}`);
-        const events = await this.spop([`${this.ns}:events:${id}`, count + 10]);
+        const events = await this.spop([`${this.ns}:events:${id}`, count + this.maxConcurrentRequests]);
         await this.del(`${this.ns}:events:${id}`);
         if (events && events.length > 0) {
           return events.map(e => JSON.parse(e));
