@@ -30,7 +30,7 @@ export default class PubSub extends PubSubInterface {
     this.redisSub.on('message', (channel, message) => {
       const id = channel.toString().replace(`${this.ns}:subscribe:`, '');
       this.unsub(`${this.ns}:subscribe:${id}`);
-      this.del(`${this.ns}:running:${id}`);
+      this.del(`${this.ns}:pending:${id}`);
       if (this.events.has(id)) {
         this.events.get(id).emit(PubSub.PROCESSED, JSON.parse(message.toString()));
         this.events.delete(id);
@@ -53,15 +53,14 @@ export default class PubSub extends PubSubInterface {
   }
 
   async subscribe(id: string, event, subscribe = true) {
-    const running = await this.get(`${this.ns}:running:${id}`);
+    const pending = parseInt(await this.incr(`${this.ns}:pending:${id}`), 10);
     this.addEventListener(id, event, subscribe);
-    if (running) {
+    if (pending > 1 && subscribe) {
       return true;
     }
 
-    const counter = await this.incr(`${this.ns}-counter`);
+    const counter = parseInt(await this.incr(`${this.ns}-counter`), 10);
     if (counter <= this.eventsPerPeriod) {
-      await this.incr(`${this.ns}:running:${id}`);
       return false;
     } else {
       await this.decr(`${this.ns}-counter`);

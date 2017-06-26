@@ -21,11 +21,12 @@ describe('PubSub', function() {
     redisSub.unsubscribe('test:subsribe:id');
     redisSub.unsubscribe('test:subsribe:id2');
     redisSub.unsubscribe('test:subsribe:id3');
+    redisSub.unsubscribe('test:subsribe:id4');
     redisPub.del('test-counter');
-    redisPub.del('test:running:id');
-    redisPub.del('test:running:id2');
-    redisPub.del('test:running:id3');
-
+    redisPub.del('test:pending:id');
+    redisPub.del('test:pending:id2');
+    redisPub.del('test:pending:id3');
+    redisPub.del('test:pending:id4');
   });
 
   describe('subscribe', function() {
@@ -40,9 +41,32 @@ describe('PubSub', function() {
       const event = {};
       const event2 = {};
       const event3 = {};
+      const event4 = {};
+      let counter = 0;
+      const promise = new Promise(r => {
+        pubSub.on(PubSub.OVERFLOW, (id, e) => {
+          counter++;
+          switch (counter) {
+            case 1:
+              e.should.eql(event3);
+              break;
+            case 2:
+              e.should.eql(event4);
+              r();
+              break;
+          }
+        });
+      });
       (await pubSub.subscribe('id', event)).should.equal(false);
       (await pubSub.subscribe('id2', event2)).should.equal(false);
       (await pubSub.subscribe('id3', event3)).should.equal(true);
+      (await pubSub.subscribe('id3', event3)).should.equal(true);
+      (await pubSub.subscribe('id4', event4)).should.equal(true);
+      const pending = await new Promise((resolve, reject) =>
+        redisPub.get('test:pending:id3', (err, data) => (err ? reject(err) : resolve(data)))
+      );
+      pending.should.equal('2');
+      await promise;
     });
   });
 
