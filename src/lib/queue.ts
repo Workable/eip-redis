@@ -3,17 +3,11 @@ import * as Redis from 'redis';
 import * as promisify from 'pify';
 
 export default class Queue extends QueueInterface {
-  private sadd: Function;
   private spop: Function;
-  private scard: Function;
-  private del: Function;
 
   constructor(public redis: Redis.RedisClient, public ns: string, private maxConcurrentRequests = 10) {
     super();
-    this.sadd = promisify(this.redis.sadd.bind(this.redis));
     this.spop = promisify(this.redis.spop.bind(this.redis));
-    this.scard = promisify(this.redis.scard.bind(this.redis));
-    this.del = promisify(this.redis.del.bind(this.redis));
   }
 
   async enqueue(id: string, priority: number, event: any) {
@@ -23,21 +17,27 @@ export default class Queue extends QueueInterface {
       priority = 0;
     }
 
-    await this.sadd(`${this.ns}:priority:${priority}`, id);
-    await this.sadd(`${this.ns}:events:${id}`, JSON.stringify(event));
-    return;
+    await new Promise((resolve, reject) =>
+      this.redis
+        .multi()
+        .sadd(`${this.ns}:priority:${priority}`, id)
+        .set(`${this.ns}:events:${id}`, JSON.stringify(event))
+        .exec((err, res) => (err ? reject(err) : resolve(res)))
+    );
   }
 
   async dequeue() {
     for (let priority = 10; priority >= 0; priority--) {
       const id = await this.spop([`${this.ns}:priority:${priority}`]);
       if (id) {
-        const count = await this.scard(`${this.ns}:events:${id}`);
-        const events = await this.spop([`${this.ns}:events:${id}`, count + this.maxConcurrentRequests]);
-        await this.del(`${this.ns}:events:${id}`);
-        if (events && events.length > 0) {
-          return events.map(e => JSON.parse(e));
-        }
+        const event = await (<Promise<string>>new Promise((resolve, reject) =>
+          this.redis
+            .multi()
+            .get(`${this.ns}:events:${id}`)
+            .del(`${this.ns}:events:${id}`)
+            .exec((err, res) => (err ? reject(err) : resolve(res[0])))
+        ));
+        return [JSON.parse(event)];
       }
     }
     return [];
