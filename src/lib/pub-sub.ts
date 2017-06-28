@@ -60,7 +60,7 @@ export default class PubSub extends PubSubInterface {
     }
 
     const counter = parseInt(await this.incr(`${this.ns}-counter`), 10);
-    if (counter <= this.eventsPerPeriod) {
+    if (counter <= this.eventsPerPeriod || !subscribe) {
       return false;
     } else {
       await this.decr(`${this.ns}-counter`);

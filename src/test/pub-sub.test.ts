@@ -1,5 +1,4 @@
 import * as redis from 'redis';
-import { PubSub as PubSubInterface } from 'eip';
 import * as should from 'should';
 import { PubSub } from '../lib';
 
@@ -10,7 +9,7 @@ import * as sinon from 'sinon';
 const sandbox = sinon.sandbox.create();
 
 describe('PubSub', function() {
-  let pubSub: PubSubInterface;
+  let pubSub: PubSub;
 
   beforeEach(function() {
     pubSub = new PubSub(2, redisPub, redisSub, 'test');
