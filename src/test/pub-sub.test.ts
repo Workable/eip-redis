@@ -1,12 +1,17 @@
 import * as redis from 'redis';
 import * as should from 'should';
 import { PubSub } from '../lib';
+import * as promisify from 'pify';
 
 const redisPub = redis.createClient();
 const redisSub = redis.createClient({ return_buffers: true });
 
 import * as sinon from 'sinon';
 const sandbox = sinon.sandbox.create();
+
+const wait = async (timeout = 10) => {
+  await new Promise(r => setTimeout(r, timeout));
+};
 
 describe('PubSub', function() {
   let pubSub: PubSub;
@@ -15,17 +20,23 @@ describe('PubSub', function() {
     pubSub = new PubSub(2, redisPub, redisSub, 'test');
   });
 
-  afterEach(function() {
-    sandbox.restore();
+  beforeEach(function() {
     redisSub.unsubscribe('test:subsribe:id');
+    redisSub.unsubscribe('test:subsribe:id1');
     redisSub.unsubscribe('test:subsribe:id2');
     redisSub.unsubscribe('test:subsribe:id3');
     redisSub.unsubscribe('test:subsribe:id4');
     redisPub.del('test-counter');
     redisPub.del('test:pending:id');
+    redisPub.del('test:pending:id1');
     redisPub.del('test:pending:id2');
     redisPub.del('test:pending:id3');
     redisPub.del('test:pending:id4');
+  });
+
+  afterEach(function() {
+    sandbox.restore();
+    pubSub.close();
   });
 
   describe('subscribe', function() {
@@ -79,9 +90,16 @@ describe('PubSub', function() {
       await pubSub.timeout();
       (await pubSub.subscribe('id3', event3)).should.equal(false);
     });
+
+    it('should never reduce bellow 0', async function() {
+      await pubSub.timeout();
+      await pubSub.timeout();
+      const counter = await promisify(redisPub.get.bind(redisPub))('test-counter');
+      counter.should.equal('0');
+    });
   });
 
-  describe('unsubscribe', function() {
+  describe('publish', function() {
     it('should broadcast that event has been processed', async function() {
       const event = {};
       const event2 = {};
@@ -103,6 +121,46 @@ describe('PubSub', function() {
       (await pubSub.subscribe('id', event2)).should.equal(true);
       await pubSub.publish('id', 'result');
       await promise;
+    });
+  });
+
+  describe('beforeExit', function() {
+    it('should wait for event to finish and then quit', async function() {
+      const exit = sandbox.stub(process, 'exit');
+      const event = {};
+      const event2 = {};
+      (await pubSub.subscribe('id1', event)).should.equal(false);
+      (await pubSub.subscribe('id1', event2)).should.equal(true);
+      process.kill(process.pid);
+      await pubSub.publish('id1', 'result');
+      await wait();
+      exit.args.should.eql([[0]]);
+    });
+
+    it('should wait for two events to finish', async function() {
+      const exit = sandbox.stub(process, 'exit');
+      exit.args.should.eql([]);
+      const event = {};
+      const event2 = {};
+      (await pubSub.subscribe('id1', event)).should.equal(false);
+      (await pubSub.subscribe('id2', event2)).should.equal(false);
+      process.kill(process.pid);
+      await pubSub.publish('id1', 'result');
+      await pubSub.publish('id2', 'result');
+      await wait();
+      exit.args.should.eql([[0]]);
+    });
+
+    it('should wait for two events to finish and never quit', async function() {
+      const exit = sandbox.stub(process, 'exit');
+      const event = {};
+      const event2 = {};
+      (await pubSub.subscribe('id1', event)).should.equal(false);
+      (await pubSub.subscribe('id2', event2)).should.equal(false);
+      process.kill(process.pid);
+      await pubSub.publish('id1', 'result');
+      await wait();
+      exit.args.should.eql([]);
     });
   });
 });

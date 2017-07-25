@@ -36,6 +36,28 @@ export default class PubSub extends PubSubInterface {
         this.events.delete(id);
       }
     });
+    this.beforeExit = this.beforeExit.bind(this);
+
+    process.on('SIGTERM', this.beforeExit);
+    process.on('SIGINT', this.beforeExit);
+  }
+
+  private async beforeExit() {
+    let size = this.events.size;
+    await new Promise((resolve, reject) => {
+      if (size === 0) {
+        resolve();
+      }
+      for (const [, entry] of this.events.entries()) {
+        entry.on(PubSub.PROCESSED, () => {
+          size = size - 1;
+          if (size === 0) {
+            resolve();
+          }
+        });
+      }
+    });
+    process.exit(0); // eslint-disable-line no-pro
   }
 
   private addEventListener(id, event, subscribe) {
@@ -70,10 +92,18 @@ export default class PubSub extends PubSubInterface {
   }
 
   async timeout() {
-    await this.decr(`${this.ns}-counter`);
+    const counter = await this.decr(`${this.ns}-counter`);
+    if (counter < 0) {
+      await this.incr(`${this.ns}-counter`);
+    }
   }
 
   async publish(id: string, result) {
     await this.pub(`${this.ns}:subscribe:${id}`, JSON.stringify(result));
+  }
+
+  close() {
+    process.removeListener('SIGTERM', this.beforeExit);
+    process.removeListener('SIGINT', this.beforeExit);
   }
 }
