@@ -63,12 +63,14 @@ export default class PubSub extends PubSubInterface {
   private addEventListener(id, event, subscribe) {
     this.redisSub.subscribe(`${this.ns}:subscribe:${id}`);
 
-    if (!subscribe) {
-      return;
-    }
     if (!this.events.has(id)) {
       this.events.set(id, new EventEmmiter.EventEmitter());
     }
+
+    if (!subscribe) {
+      return;
+    }
+
     this.events.get(id).on(PubSub.PROCESSED, result => {
       this.inject(id, event, result);
     });
