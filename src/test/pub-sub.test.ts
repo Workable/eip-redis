@@ -17,7 +17,7 @@ describe('PubSub', function() {
   let pubSub: PubSub;
 
   beforeEach(function() {
-    pubSub = new PubSub(2, redisPub, redisSub, 'test');
+    pubSub = new PubSub(2, redisPub, redisSub, 'test', 10);
   });
 
   beforeEach(function() {
@@ -68,6 +68,7 @@ describe('PubSub', function() {
         });
       });
       (await pubSub.subscribe('id', event)).should.equal(false);
+      (await promisify(redisPub.ttl.bind(redisPub))('test:pending:id')).should.equal(10);
       (await pubSub.subscribe('id2', event2)).should.equal(false);
       (await pubSub.subscribe('id3', event3)).should.equal(true);
       (await pubSub.subscribe('id3', event3)).should.equal(true);
