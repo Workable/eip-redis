@@ -8,6 +8,7 @@ const redisSub = redis.createClient({ return_buffers: true });
 
 import * as sinon from 'sinon';
 const sandbox = sinon.sandbox.create();
+const originalkill = process.kill.bind(process);
 
 const wait = async (timeout = 10) => {
   await new Promise(r => setTimeout(r, timeout));
@@ -127,38 +128,38 @@ describe('PubSub', function() {
 
   describe('beforeExit', function() {
     it('should wait for event to finish and then quit', async function() {
-      const exit = sandbox.stub(process, 'exit');
+      const exit = sandbox.stub(process, 'kill');
       const event = {};
       const event2 = {};
       (await pubSub.subscribe('id1', event)).should.equal(false);
       (await pubSub.subscribe('id1', event2)).should.equal(true);
-      process.kill(process.pid);
+      originalkill(process.pid);
       await pubSub.publish('id1', 'result');
       await wait();
-      exit.args.should.eql([[0]]);
+      exit.args.should.eql([[process.pid]]);
     });
 
     it('should wait for two events to finish', async function() {
-      const exit = sandbox.stub(process, 'exit');
+      const exit = sandbox.stub(process, 'kill');
       exit.args.should.eql([]);
       const event = {};
       const event2 = {};
       (await pubSub.subscribe('id1', event)).should.equal(false);
       (await pubSub.subscribe('id2', event2)).should.equal(false);
-      process.kill(process.pid);
+      originalkill(process.pid);
       await pubSub.publish('id1', 'result');
       await pubSub.publish('id2', 'result');
       await wait();
-      exit.args.should.eql([[0]]);
+      exit.args.should.eql([[process.pid]]);
     });
 
     it('should wait for two events to finish and never quit', async function() {
-      const exit = sandbox.stub(process, 'exit');
+      const exit = sandbox.stub(process, 'kill');
       const event = {};
       const event2 = {};
       (await pubSub.subscribe('id1', event)).should.equal(false);
       (await pubSub.subscribe('id2', event2)).should.equal(false);
-      process.kill(process.pid);
+      originalkill(process.pid);
       await pubSub.publish('id1', 'result');
       await wait();
       exit.args.should.eql([]);

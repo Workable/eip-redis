@@ -36,7 +36,7 @@ export default class PubSub extends PubSubInterface {
       this.redisSub.on('pmessage', (pattern, channel, message) => {
         const key = message.toString();
         if (key.startsWith(`${this.ns}:pending`)) {
-          getLogger().warn(`[pub-sub] ${key} has expired`);
+          getLogger().warn(`[pub-sub] [${this.ns}] ${key} has expired`);
         }
       });
     }
@@ -59,13 +59,13 @@ export default class PubSub extends PubSubInterface {
   private async beforeExit() {
     let size = this.events.size;
     await new Promise((resolve, reject) => {
-      getLogger().debug(`[pub-sub] Exiting... Remaining events ${size};`);
+      getLogger().debug(`[pub-sub] [${this.ns}] Exiting... Remaining events ${size};`);
       if (size === 0) {
-        resolve();
+        return resolve();
       }
       for (const [id, entry] of this.events.entries()) {
         entry.on(PubSub.PROCESSED, () => {
-          getLogger().debug(`[pub-sub] [${id}] Just processed before exiting...`);
+          getLogger().debug(`[pub-sub] [${this.ns}] [${id}] Just processed before exiting...`);
           size = size - 1;
           if (size === 0) {
             resolve();
@@ -73,7 +73,8 @@ export default class PubSub extends PubSubInterface {
         });
       }
     });
-    process.exit(0); // eslint-disable-line no-pro
+    this.close();
+    process.kill(process.pid); // eslint-disable-line no-pro
   }
 
   private addEventListener(id, event, subscribe) {
