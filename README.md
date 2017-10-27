@@ -1,4 +1,4 @@
-# eip-mongo
+# eip-redis
 
 Enterprise Integration Patterns for javascript redis adapter.
 
