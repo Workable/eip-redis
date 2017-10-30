@@ -1,7 +1,7 @@
 {
   "name": "eip-redis",
   "description": "Redis Adapter for the eip module. It supports a pubsub module on top of redis.",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "dependencies": {
     "log4js": "^1.1.1",
     "pify": "^3.0.0"
