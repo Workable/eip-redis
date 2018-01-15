@@ -12,6 +12,7 @@ export default class PubSub extends PubSubInterface {
   private get: Function;
   private del: Function;
   private expire: Function;
+  private set: Function;
   private events: Map<String, any> = new Map();
 
   constructor(
@@ -30,7 +31,9 @@ export default class PubSub extends PubSubInterface {
     this.get = promisify(this.redisPub.get.bind(this.redisPub));
     this.del = promisify(this.redisPub.del.bind(this.redisPub));
     this.expire = promisify(this.redisPub.expire.bind(this.redisPub));
+    this.set = promisify(this.redisPub.set.bind(this.redisPub));
 
+    this.set(`${this.ns}-counter`, 0);
     if (this.expireSeconds > 0) {
       this.redisSub.psubscribe('__key*__:*');
       this.redisSub.on('pmessage', (pattern, channel, message) => {

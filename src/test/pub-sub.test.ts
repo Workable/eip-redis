@@ -40,6 +40,23 @@ describe('PubSub', function() {
     pubSub.close();
   });
 
+  describe('constructor', function() {
+    beforeEach(async function() {
+      await promisify(redisPub.set.bind(redisPub))('constructor-counter', '2');
+    });
+
+    it('should reset counter to 0', async function() {
+      const pubSub = new PubSub(2, redisPub, redisSub, 'constructor', 10);
+      const counter = await promisify(redisPub.get.bind(redisPub))('constructor-counter');
+      counter.should.equal('0');
+      pubSub.close();
+    });
+
+    afterEach(async function() {
+      await promisify(redisPub.del.bind(redisPub))('constructor-counter');
+    });
+  });
+
   describe('subscribe', function() {
     it('should mark first event and subscribe to event already in progress', async function() {
       const event = {};
