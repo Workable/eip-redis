@@ -40,7 +40,7 @@
     "@types/uuid": "2.0.29",
     "eip": "^1.8.0",
     "istanbul": "0.4.5",
-    "mocha": "3.2.0",
+    "mocha": "3.5.3",
     "mongoose-fixtures": "0.0.1",
     "redis": "^2.7.1",
     "remap-istanbul": "0.8.4",
